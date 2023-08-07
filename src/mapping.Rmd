@@ -176,6 +176,10 @@ Some questions that came to my mind when I was doing this exercise.
 1. If a target taxon in `eco:targetTaxonomicScope` has taxonRank genus, it means _every_ species of the genus is targeted. If this was the intent, that an external identifier should perhaps be provided to point to the taxon concept it refers to. The concept should perhaps have a version snapshot. Otherwise, how can one know _what_ species there are under this genus at the time of the dwc:Event? Can a user infer non-detection of the target taxa up to species level if only genus of target taxa is specified in `eco:targetTaxonomicScope`? Is this a good practice?
 2. I do not know how to document and distinguish the Event where by-catch were caught but not reported and Event which caught nothing. dwc:Events that caught nothing **within the scope of this dataset** (krills data of the same Event is in a separate dataset) are represented with rows with no colour filled (figure 1) or grey colour (figure 2). There is no dwc:Event that caught by catch but not reported in this dataset.
 
+## Acknowledgement
+
+Credit to Anton Van de Putte for kindly allowing us to use his dataset to test the extension and the time spend in helping us to understand his data.
+
 
 ## Bibliographic citation
 
