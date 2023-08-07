@@ -44,7 +44,7 @@ emof <- read_tsv("https://docs.google.com/spreadsheets/d/e/2PACX-1vTzxqpYCe1tVdi
 
 The objective of this mapping exercise is to test the guiding principles in _using_ the Humboldt Extension in data publication and check whether the guiding principles allow the data to be _interpreted_ (infer non-detection of target taxa).
 
-```{r, taxonomic-scope-complete, echo=FALSE}
+```{r, taxonomic-scope-complete, echo=FALSE, message=FALSE}
 library(here)
 
 # If any dwc:Organism of an dwc:Occurrence from an dwc:Event are within eco:targetTaxonomicScope, set eco:isTaxonomicScopeFullyReported to true. 
