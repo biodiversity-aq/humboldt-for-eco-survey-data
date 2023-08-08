@@ -183,7 +183,7 @@ The `dwc:scientificName` in <span style="color: red;">red</span> are `dwc:Organi
 
 ## Thoughts
 
-Some of my thoughts and questions that came to my mind
+Some of my thoughts and questions
 
 ### 1. Should `eco:isTaxonomicScopeFullyReported` be true/false/null if an dwc:Event is **not** associated with any dwc:Occurrence?
 
@@ -227,6 +227,15 @@ Each taxon in `eco:targetTaxonomicScope` can be associated with multiple target 
 The lack of identifiers for `dwc:scientificName` in `eco:targetTaxonomicScope` may be problematic for [homonyms](https://discourse.gbif.org/t/millipedes-in-the-ocean/3991) (or more). 
 
 If a target taxon in `eco:targetTaxonomicScope` has `dwc:taxonRank` == genus, it means _every_ species of the genus is targeted. If this was the intent, then an external identifier should perhaps be provided to point to the taxon concept it refers to. The concept should perhaps have a version snapshot. Otherwise, how can one know _what_ species there are under this genus at the time of the dwc:Event? Can a user infer non-detection of the target taxa up to species level if only genus of target taxa is specified in `eco:targetTaxonomicScope`? Is this a good practice?
+
+### 7. Difference in number of records for dwc:Occurrence when non-detection is explicit and when it is inferred
+
+```{r}
+nrow(occ_presence_absence)  
+nrow(occ)  # there can be multiple occurrences of SAME taxon per event because the occurrenceID is needed for individual length measurement of the fish
+nrow(occ_presence_absence) - nrow(occ)
+```
+
 
 ## Acknowledgement
 
