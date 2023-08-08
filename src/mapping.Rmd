@@ -7,15 +7,23 @@ output:
     df_print: paged
 ---
 
+## Objectives
+
+The objectives of this exercise are:
+
+- to test the guiding principles in **using** the Humboldt Extension in data publication 
+- to check whether the data published following the terms definition and guiding principles allow the data to be **interpreted** (infer non-detection of target taxa).
+
+
 ## Dataset information 
 
 This dataset is based on the data from https://doi.org/10.1016/j.dsr2.2008.02.015 [1]
 It is a dataset for testing [OBIS ENV-data structure](https://manual.obis.org/examples.html#examples-env-data-and-dna-derived-data): https://ipt.iobis.org/obis-env/resource?r=brokewest_fish
 Original data is here [doi:10.4225/15/598d453109182](http://dx.doi.org/doi:10.4225/15/598d453109182)
 
-This dataset is used as a test use case to understand how to map marine survey data to the Humboldt Extension. 
+This dataset is used as a test use case to understand how to map marine survey data to the Humboldt Extension. The mapping was done including the use of iri terms, "pretending" that this feature is available in IPT: https://github.com/gbif/ipt/issues/1947 Otherwise it's *very difficult* to parse paired pipe separated data (e.g. `eco:targetTaxonomicScope` and `eco:targetLifeStageScope`.
 
-There are 4 tables in this dataset:
+Tables in this dataset:
 
 table name | description
 :--|:---
@@ -23,28 +31,37 @@ event | Event core table with relevant fields from https://rs.gbif.org/core/dwc_
 occurrence | Occurrence extension table with relevant fields from https://rs.gbif.org/core/dwc_occurrence_2022-02-02.xml Each dwc:Occurrence record has an dwc:eventID that points to corresponding dwc:Event record in the `event` table.
 humboldt | The Humboldt Extension table with relevant Humboldt fields from https://tdwg.github.io/hc/terms/ Each record has an dwc:eventID that points to corresponding dwc:Event record in the `event` table.
 emof | The extended measurment or fact table (eMoF) with relevant eMoF fields from https://rs.gbif.org/extension/obis/extended_measurement_or_fact.xml Each record has an dwc:eventID that points to corresponding dwc:Event record in the event table. Optionally, if it is a measurement of an dwc:Occurrence record, the record also has a dwc:occurrenceID that points to a record in `occurrence` table.
-
+target | Due to the limitation of star schema, the paired information of eco:targetLifeStageScope, eco:targetTaxonomicScope are difficult to parse. Hence I created a separate `target` table for this purpose.  
 
 Relationships between files are depicted in figure below.
 
 ![](../images/survey-design-dwca.png)
 
-```{r, read-data, message=FALSE, warning=FALSE, echo=FALSE}
+```{r, read-data, message=FALSE, warning=FALSE}
 library(tidyverse)
 
 # Get tsv files from Google Drive 
 event <- read_tsv("https://docs.google.com/spreadsheets/d/e/2PACX-1vTzxqpYCe1tVdichPPMCVgP9fyY6duJrtgyO8zGwm7xMKL5WLb3l6MPq0Ke5TIlwU97ovdZ__ptkkMw/pub?gid=0&single=true&output=tsv", col_names = TRUE, show_col_types = FALSE)
 occ <- read_tsv("https://docs.google.com/spreadsheets/d/e/2PACX-1vTzxqpYCe1tVdichPPMCVgP9fyY6duJrtgyO8zGwm7xMKL5WLb3l6MPq0Ke5TIlwU97ovdZ__ptkkMw/pub?gid=53360819&single=true&output=tsv", col_names = TRUE, show_col_types = FALSE)
 humboldt <- read_tsv("https://docs.google.com/spreadsheets/d/e/2PACX-1vTzxqpYCe1tVdichPPMCVgP9fyY6duJrtgyO8zGwm7xMKL5WLb3l6MPq0Ke5TIlwU97ovdZ__ptkkMw/pub?gid=604710631&single=true&output=tsv", col_names = TRUE, show_col_types = FALSE)
-target <- read_tsv("https://docs.google.com/spreadsheets/d/e/2PACX-1vTzxqpYCe1tVdichPPMCVgP9fyY6duJrtgyO8zGwm7xMKL5WLb3l6MPq0Ke5TIlwU97ovdZ__ptkkMw/pub?gid=872194191&single=true&output=tsv", col_names = TRUE, show_col_types = FALSE)
 emof <- read_tsv("https://docs.google.com/spreadsheets/d/e/2PACX-1vTzxqpYCe1tVdichPPMCVgP9fyY6duJrtgyO8zGwm7xMKL5WLb3l6MPq0Ke5TIlwU97ovdZ__ptkkMw/pub?gid=2088877587&single=true&output=tsv", col_names = TRUE, show_col_types = FALSE)
+target <- read_tsv("https://docs.google.com/spreadsheets/d/e/2PACX-1vTzxqpYCe1tVdichPPMCVgP9fyY6duJrtgyO8zGwm7xMKL5WLb3l6MPq0Ke5TIlwU97ovdZ__ptkkMw/pub?gid=872194191&single=true&output=tsv", col_names = TRUE, show_col_types = FALSE)
 ```
 
-## Objective
+## Explore dataset
 
-The objective of this mapping exercise is to test the guiding principles in _using_ the Humboldt Extension in data publication and check whether the guiding principles allow the data to be _interpreted_ (infer non-detection of target taxa).
+Different tables used in this exercise. `emof` table is not shown. Dataset with Humboldt Extension is available at https://ipt.gbif.org/resource?r=brokewest-fish
 
-```{r, taxonomic-scope-complete, echo=FALSE, message=FALSE}
+```{r}
+library(DT)
+datatable(event, class = c("display", "nowrap","hover", "stripe", "order-column"), options = list(pageLength = 5, dom = 'tip'))
+datatable(occ, class = c("display", "nowrap","hover", "stripe", "order-column"), options = list(pageLength = 5, dom = 'tip'))
+datatable(humboldt, class = c("display", "nowrap","hover", "stripe", "order-column"), options = list(pageLength = 5, dom = 'tip'))
+datatable(target, class = c("display", "nowrap","hover", "stripe", "order-column"), options = list(pageLength = 5, dom = 'tip'))
+```
+
+
+```{r, taxonomic-scope-complete, echo=FALSE, message=FALSE, eval=FALSE}
 library(here)
 
 # If any dwc:Organism of an dwc:Occurrence from an dwc:Event are within eco:targetTaxonomicScope, set eco:isTaxonomicScopeFullyReported to true. 
@@ -67,8 +84,6 @@ write_tsv(humboldt, file = here("data/humboldt.txt"), na ="")
 ```
 
 ## Visualise dwc:occurrenceStatus of presence-only dwc:Occurrence data for each dwc:Event
-
-The `dwc:scientificName` in red are `dwc:Organism` caught during the `dwc:Event`, but are not within the `eco:targetTaxonomicScope` (by-catch); the ones in blue are within the `eco:targetTaxonomicScope`.  In other words, in this dataset, the `target` is the thing the researchers intended to catch using the sampling design. 
 
 ```{r fig.align="center", fig.height=17, fig.width=10, message=FALSE, warning=FALSE}
 library(ggplot2)
@@ -96,22 +111,30 @@ ggplot(occ_presence_only, aes(scientificName, eventID, fill = factor(occurrenceS
   scale_fill_manual(
     values = color_1,
     labels = "present",
-    na.translate = FALSE  # do not fill occurrenceStatus = NA with colours because only scientificName = NA (Event caught nothing) will have occurrenceStatus = NA
+    # do not fill occurrenceStatus = NA with colours because only scientificName = NA (Event caught nothing) will have occurrenceStatus = NA
+    na.translate = FALSE  
   ) +
   # rotate and right-aligned x-axis label
   theme(axis.text.x = element_text(angle = 90, hjust=0.95, vjust=0.2, colour = target_colour$colour)) +
   labs(title = "Figure 1: dwc:occurrenceStatus of presence only dwc:Occurrences")
 ```
 
-### Infer non-detection of target taxa from presence-only data using Humboldt Extension
+Unfilled cells mean that the information of dwc:occurrenceStatus is not provided in the `occurrence` table.
 
-By-catch are not part of the `eco:targetTaxonomicScope` so its non-detection cannot be inferred. 
+## Infer non-detection of target taxa from presence-only data using Humboldt Extension
 
-```{r}
+The non-detection of target taxa is inferred using the information of:
+
+- what was detected and reported (dwc:Occurrence records)
+- what was targeted (eco:targetTaxonomicScope)
+
+For the sake of simplicity, life stages of the target taxa will not be taken into account in this exercise.
+
+```{r create presence absence matrix, message=FALSE, warning=FALSE}
 event_target_taxon_scope <- humboldt %>% select(eventID, isTaxonomicScopeFullyReported)
 unique_target <- occ_presence_only %>% select(scientificName) %>% unique()
 
-# Create combinations of eventID and scientificName
+# Create combinations of eventID and scientificName of target taxa so that each eventID has EVERY target taxa in the table before occurrenceStatus is populated.
 occ_presence_absence <- crossing(eventID = humboldt$eventID, scientificName = unique_target$scientificName) %>%
   # Left join with the occurrence data frame
   full_join(occ_presence_only, by = c("eventID", "scientificName")) %>%
@@ -122,13 +145,13 @@ occ_presence_absence <- crossing(eventID = humboldt$eventID, scientificName = un
       occurrenceStatus == 1 ~ occurrenceStatus,
       # if occurrenceStatus = NA, scientificName is in target AND isTaxonomicScopeFullyReported = TRUE, update occurrenceStatus = 0 (inferred non-detection)
       is.na(occurrenceStatus) & scientificName %in% target$scientificName & isTaxonomicScopeFullyReported ~ 0,
-      # else, leave it as NA (cannot infer non-detection because isTaxonomicScopeFullyReported is FALSE)
+      # else, leave it as NA (cannot infer non-detection when isTaxonomicScopeFullyReported is FALSE)
       TRUE ~ NA
     )
   )
 ```
 
-Plot presence and inferred non-detection of target taxa with geom_tile.
+### Visualise presence and inferred non-detection of target taxa per dwc:Event
 
 ```{r fig.align="center", fig.height=17, fig.width=10, message=FALSE, warning=FALSE}
 # colour target = blue, by-catch = red
@@ -156,33 +179,64 @@ ggplot(occ_presence_absence, aes(scientificName, eventID, fill=factor(occurrence
   
 ```
 
+The `dwc:scientificName` in <span style="color: red;">red</span> are `dwc:Organism` caught during the `dwc:Event`, but are not within the `eco:targetTaxonomicScope` (by-catch); the ones in <span style="color: blue;">blue</span> are within the `eco:targetTaxonomicScope`. In other words, in this dataset, the `target` is the thing the researchers intended to catch using the sampling design. By-catch are not part of the `eco:targetTaxonomicScope` so its non-detection cannot be inferred. 
 
-## What not to do 
+## Thoughts
 
-If you know what are the life stages applicable for your target taxa, please list them **all out** instead of using `all`. This allows user to make inference about the non-detection of the taxon at its specific life stage. Otherwise it is difficult for user to understand what life stages are applicable to the target taxa as life stage could be taxa-specific. Please also see Remarks #2.
+Some of my thoughts and questions that came to my mind
 
-## Remarks
+### 1. Should `eco:isTaxonomicScopeFullyReported` be true/false/null if an dwc:Event is **not** associated with any dwc:Occurrence?
 
-1. Reporting-related terms (e.g. `eco:isLifeStageScopeFullyReported`) per dwc:Event (limitation of star schema) instead of per target taxa is limiting the information that can be inferred. 
-2. How to fill in `eco:excludedLifeStageScope` when there is `none` (`eco:targetLifeStageScope` == all life stages). Because of the way the data is ordered alongside with `eco:targetTaxonomicScope`. User cannot infer non-detection of taxa to life stage level if there is only `eco:targetLifeStageScope` without explicit `eco:excludedLifeStageScope`
-3. The lack of identifiers for `dwc:scientificName` in `eco:targetTaxonomicScope` may be problematic for homonyms (or more, please see Questions #1). 
-4. Construction of the target list. If I understand correctly, Anton does not have a *very clear* list of species before the expedition. He has some idea (up to genus and life stage) of what is expected to be caught. The target list was constructed based on what was caught as they identified and reported *everything* they caught. But, not everything is reported in this dataset. Krills are identified and reported by a different group of people in a [separate dataset](https://data.aad.gov.au/metadata/records/BROKE-West_RMT_krill). 
-5. The mapping was done including the use of iri terms, "pretending" that this feature is available in IPT: https://github.com/gbif/ipt/issues/1947 Otherwise it's *very difficult* to parse the pipe separated data
+In this dataset, every observations were recorded. `eco:isTaxonomicScopeFullyReported` is defined as
 
-## Questions
+> Every dwc:Organism that was included within the taxonomic scope, and was detected during the dwc:Event, was reported.
 
-Some questions that came to my mind when I was doing this exercise.
+I am slightly confused about how to populate `eco:isTaxonomicScopeFullyReported` if an dwc:Event is not associated with dwc:Occurrence. If `eco:isTaxonomicScopeFullyReported` is `false`, then the non-detection of targets cannot be inferred. Hence, I set `eco:isTaxonomicScopeFullyReported` to `true`
 
-1. If a target taxon in `eco:targetTaxonomicScope` has taxonRank genus, it means _every_ species of the genus is targeted. If this was the intent, that an external identifier should perhaps be provided to point to the taxon concept it refers to. The concept should perhaps have a version snapshot. Otherwise, how can one know _what_ species there are under this genus at the time of the dwc:Event? Can a user infer non-detection of the target taxa up to species level if only genus of target taxa is specified in `eco:targetTaxonomicScope`? Is this a good practice?
-2. I do not know how to document and distinguish the Event where by-catch were caught but not reported and Event which caught nothing. dwc:Events that caught nothing **within the scope of this dataset** (krills data of the same Event is in a separate dataset) are represented with rows with no colour filled (figure 1) or grey colour (figure 2). There is no dwc:Event that caught by catch but not reported in this dataset.
+
+### 2. eco:targetLifeStageScope and eco:excludedLifeStageScope SHOULD be explicit 
+
+In order for users to be able to infer non-detection of target taxa up to life stage level, values for `eco:targetLifeStageScope` and `eco:excludedLifeStageScope` MUST be explicit and specific. **All out** approach of listing **every single life stage** should be used instead of using `all` for these two fields. Similarly, it should be explicit when `none` is the value instead of leaving the field blank. 
+
+This is because users cannot confidently infer non-detection of taxa to life stages level if there is only `eco:targetLifeStageScope` without explicit `eco:excludedLifeStageScope` (or vice verse) because life stages are specific to taxa. Different vocabularies can have different definitions. However, guidance to fill in these two fields when none _should_ be the value is lacking.
+
+### 3. Do I need to have a target list _before_ a survey? Can I construct the target list _after_ the identification of the dwc:Organism?
+
+If I understand correctly, Anton does not have a *very clear* list of species before the expedition. He has some idea (up to family and life stage) of what is expected to be caught. Does it make sense to put the family (e.g. [_Myctophidae_](https://www.gbif.org/species/4217)) in the `eco:targetTaxonomicScope` when the effort expanded should be targeting taxa that can occur there within the spatiotemporal scope where some of the species from the family _Myctophidae_ will not present? This seems to widen the scope of `eco:targetTaxonomicScope`.
+
+The target list here was constructed _after_ the survey, based on what was caught. Everything caught was identified and reported. Hence this list is _very_ specific and allows non-detection to be inferred to species level. However, **not** everything caught is reported in this dataset. Krills are identified and reported by a different group of people in a [separate dataset](https://data.aad.gov.au/metadata/records/BROKE-West_RMT_krill). 
+
+### 4. Distinguishing by-catch-only dwc:Event and dwc:Event that sampled nothing
+
+I do not know how to document and distinguish the Event where by-catch were caught but **not reported** and Event which caught nothing. There is no dwc:Event that caught by catch but not reported in this dataset, but a thought that this might happen.
+
+### 5. How definition of `target` may affect how inference of non-detection of `target` can be made
+
+In this dataset, by-catch is not listed in the `target` table, meaning that they are not part of `eco:targetTaxonomicScope` and `eco:lifeStageScope`. My reasoning is the sampling design and effort expanded were **intended** to sample these `targets`. Since they are not in `eco:targetTaxonomicScope`, `eco:isTaxonomicScopeFullyReported` does not apply to the by-catch and hence we cannot infer their non-detection in all dwc:Events.
+
+IF, by-catch is to be included in targets (e.g. `eco:targetTaxonomicScope`), `eco:isTaxonomicScopeFullyReported` can be applied to these taxa. The definition of `target` will then be what the sampling design and effort expanded **CAN** catch instead of what is **INTENDED** to be sampled.
+
+### 6. Limitations of star schema
+
+#### 6.1 Limiting the scope that can be inferred 
+
+Each taxon in `eco:targetTaxonomicScope` can be associated with multiple target life stage scope in `eco:targetLifeStageScope`. However, `eco:isLifeStageScopeFullyReported` can only be reported at dwc:Event level instead of per target taxon. Different taxa are often identified by different people, so there could be different reporting practices. 
+
+#### 6.2 Concept of taxon represented by `dwc:scientificName` in `eco:targetTaxonomicScope` cannot be fully expressed
+
+The lack of identifiers for `dwc:scientificName` in `eco:targetTaxonomicScope` may be problematic for [homonyms](https://discourse.gbif.org/t/millipedes-in-the-ocean/3991) (or more). 
+
+If a target taxon in `eco:targetTaxonomicScope` has `dwc:taxonRank` == genus, it means _every_ species of the genus is targeted. If this was the intent, then an external identifier should perhaps be provided to point to the taxon concept it refers to. The concept should perhaps have a version snapshot. Otherwise, how can one know _what_ species there are under this genus at the time of the dwc:Event? Can a user infer non-detection of the target taxa up to species level if only genus of target taxa is specified in `eco:targetTaxonomicScope`? Is this a good practice?
 
 ## Acknowledgement
 
-Credit to Anton Van de Putte for kindly allowing us to use his dataset to test the extension and the time spend in helping us to understand his data.
+We would like to thank Anton Van de Putte for kindly allowing us to use his dataset to test the extension and the time spend in helping us to understand his data.
 
 
 ## Bibliographic citation
 
 1. Van de Putte, A.P.; Jackson, G.D.; Pakhomov, E.; Flores, H.; Volckaert, F.A.M. (2010). Distribution of squid and fish in the pelagic zone of the Cosmonaut Sea and Prydz Bay region during the BROKE-West campaign. Deep-Sea Res., Part 2, Top. Stud. Oceanogr. 57(9-10): 956-967. [dx.doi.org/10.1016/j.dsr2.2008.02.015](https://doi.org/10.1016/j.dsr2.2008.02.015) 
 2. van de Putte, A. (2010) Fish catches from Rectangular Midwater Trawl - data collected from the BROKE-West voyage of the Aurora Australis, 2006, Ver. 1, Australian Antarctic Data Centre - [doi:10.4225/15/598d453109182](http://dx.doi.org/doi:10.4225/15/598d453109182), Accessed: 2023-08-07
+
+
 
