@@ -50,7 +50,7 @@ target <- read_tsv("https://docs.google.com/spreadsheets/d/e/2PACX-1vTzxqpYCe1tV
 
 ## Explore dataset
 
-Different tables used in this exercise. `emof` table is not shown. Dataset with Humboldt Extension is available at https://ipt.gbif.org/resource?r=brokewest-fish
+Different tables used in this exercise. `emof` table is not shown. This dataset with Humboldt Extension is available at https://ipt.gbif.org/resource?r=brokewest-fish
 
 ```{r}
 library(DT)
