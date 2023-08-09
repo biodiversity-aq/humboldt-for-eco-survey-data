@@ -18,7 +18,7 @@ The objectives of this exercise are:
 ## Dataset information 
 
 This dataset is based on the data from https://doi.org/10.1016/j.dsr2.2008.02.015 [1]
-It is a dataset for testing [OBIS ENV-data structure](https://manual.obis.org/examples.html#examples-env-data-and-dna-derived-data): https://ipt.iobis.org/obis-env/resource?r=brokewest_fish
+It is a dataset originally used for testing [OBIS ENV-data structure](https://manual.obis.org/examples.html#examples-env-data-and-dna-derived-data): https://ipt.iobis.org/obis-env/resource?r=brokewest_fish
 Original data is here [doi:10.4225/15/598d453109182](http://dx.doi.org/doi:10.4225/15/598d453109182)
 
 This dataset is used as a test use case to understand how to map marine survey data to the Humboldt Extension. The mapping was done including the use of iri terms, "pretending" that this feature is available in IPT: https://github.com/gbif/ipt/issues/1947 Otherwise it's *very difficult* to parse paired pipe separated data (e.g. `eco:targetTaxonomicScope` and `eco:targetLifeStageScope`.
@@ -109,6 +109,7 @@ color_1 <- "#0077bb"  # present
 ggplot(occ_presence_only, aes(scientificName, eventID, fill = factor(occurrenceStatus))) + 
   geom_tile() +
   scale_fill_manual(
+    name = "dwc:occurrenceStatus",
     values = color_1,
     labels = "present",
     # do not fill occurrenceStatus = NA with colours because only scientificName = NA (Event caught nothing) will have occurrenceStatus = NA
@@ -169,8 +170,9 @@ color_na <- "#bbbbbb"  # NA, occurrenceStatus = NA
 ggplot(occ_presence_absence, aes(scientificName, eventID, fill=factor(occurrenceStatus))) + 
   geom_tile() +
   scale_fill_manual(
+    name = "dwc:occurrenceStatus",
     values = c(color_0, color_1),
-    labels = c("absent", "present", "cannot be inferred"),
+    labels = c("absent (inferred non-detection)", "present", "non-detection cannot be inferred"),
     na.value = color_na
   ) +
   # rotate and right-aligned x-axis label
