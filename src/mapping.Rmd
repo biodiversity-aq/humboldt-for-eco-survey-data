@@ -61,28 +61,6 @@ datatable(target, class = c("display", "nowrap","hover", "stripe", "order-column
 ```
 
 
-```{r, taxonomic-scope-complete, echo=FALSE, message=FALSE, eval=FALSE}
-library(here)
-
-# If any dwc:Organism of an dwc:Occurrence from an dwc:Event are within eco:targetTaxonomicScope, set eco:isTaxonomicScopeFullyReported to true. 
-
-# Perform left join on humboldt and occurrence tables
-taxonomic_scope_joined_table <- humboldt %>%
-  left_join(occ, by = "eventID", relationship = "many-to-many") %>%
-  left_join(target, by = "scientificName", relationship = "many-to-many") %>%
-  group_by(eventID, isTaxonomicScopeFullyReported) %>%
-  # if all dwc:Organism of dwc:Occurrence of an dwc:Event are in targetTaxonomicScope
-  mutate(isTaxonomicScopeFullyReported = all(!is.na(scientificName))) %>%  
-  select(eventID, isTaxonomicScopeFullyReported) %>%
-  unique()
-
-# Update the original humboldt table
-humboldt$isTaxonomicScopeFullyReported <- taxonomic_scope_joined_table$isTaxonomicScopeFullyReported
-
-# write to file
-write_tsv(humboldt, file = here("data/humboldt.txt"), na ="")
-```
-
 ## Visualise dwc:occurrenceStatus of presence-only dwc:Occurrence data for each dwc:Event
 
 ```{r fig.align="center", fig.height=17, fig.width=10, message=FALSE, warning=FALSE}
