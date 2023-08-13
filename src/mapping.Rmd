@@ -74,11 +74,17 @@ occ_presence_only <- occ %>%
   # convert dwc:occurrenceStatus = present to 1, ignore individualCount or multiple occurrence of same taxa with 1 individual 
   mutate(across(everything(), ~ifelse(. == "present", 1, .))) 
 
+# get Occurrences that belongs to target
+target_organisms <- occ %>% 
+  select(scientificName, family) %>% 
+  filter(family %in% target$family) %>% 
+  left_join(target)
+
 # colour for labels in x-axis: target = blue, by-catch = red
 target_colour <- occ_presence_only %>% 
   select(scientificName) %>% 
   unique() %>% 
-  mutate(colour = ifelse(scientificName %in% target$scientificName, "blue", "red")) %>% 
+  mutate(colour = ifelse(scientificName %in% target_organisms$scientificName, "blue", "red")) %>% 
   arrange(scientificName) # have to sort it based on scientificName and pass the colour to theme() in ggplot
 
 # define custom colour-blind friendly colours (https://personal.sron.nl/~pault/#sec:qualitative) for occurrenceStatus values
@@ -123,7 +129,7 @@ occ_presence_absence <- crossing(eventID = humboldt$eventID, scientificName = un
       # keep occurrenceStatus as 1 when it is 1 (presence only data)
       occurrenceStatus == 1 ~ occurrenceStatus,
       # if occurrenceStatus = NA, scientificName is in target AND isTaxonomicScopeFullyReported = TRUE, update occurrenceStatus = 0 (inferred non-detection)
-      is.na(occurrenceStatus) & scientificName %in% target$scientificName & isTaxonomicScopeFullyReported ~ 0,
+      is.na(occurrenceStatus) & scientificName %in% target_organisms$scientificName & isTaxonomicScopeFullyReported ~ 0,
       # else, leave it as NA (cannot infer non-detection when isTaxonomicScopeFullyReported is FALSE)
       TRUE ~ NA
     )
@@ -137,7 +143,7 @@ occ_presence_absence <- crossing(eventID = humboldt$eventID, scientificName = un
 target_colour <- occ_presence_absence %>% 
   select(scientificName) %>% 
   unique() %>% 
-  mutate(colour = ifelse(scientificName %in% target$scientificName, "blue", "red")) %>% 
+  mutate(colour = ifelse(scientificName %in% target_organisms$scientificName, "blue", "red")) %>% 
   arrange(scientificName) # have to sort it based on scientificName and pass the colour to theme() in ggplot
 
 # define custom colour-blind friendly colours (https://personal.sron.nl/~pault/#sec:qualitative) for occurrenceStatus values 1, 0 and NA
@@ -171,7 +177,7 @@ In this dataset, every observations were reported. `eco:isTaxonomicScopeFullyRep
 
 > Every dwc:Organism that was included within the taxonomic scope, and was detected during the dwc:Event, was reported.
 
-I am slightly confused about how to populate `eco:isTaxonomicScopeFullyReported` if an dwc:Event is not associated with dwc:Occurrence. If `eco:isTaxonomicScopeFullyReported` is `false`, then the non-detection of targets cannot be inferred. Hence, I set `eco:isTaxonomicScopeFullyReported` to `true`
+I am slightly confused about how to populate `eco:isTaxonomicScopeFullyReported` if an dwc:Event is not associated with dwc:Occurrence. If `eco:isTaxonomicScopeFullyReported` is `false`, then the non-detection of targets cannot be inferred. Hence, I set `eco:isTaxonomicScopeFullyReported` to `true`.
 
 
 ### 2. eco:targetLifeStageScope and eco:excludedLifeStageScope SHOULD be explicit 
@@ -180,11 +186,14 @@ In order for users to be able to infer non-detection of target taxa up to life s
 
 This is because users cannot confidently infer non-detection of taxa to life stages level if there is only `eco:targetLifeStageScope` without explicit `eco:excludedLifeStageScope` (or vice verse) because life stages are specific to taxa. Different vocabularies can have different definitions. However, guidance to fill in these two fields when none _should_ be the value is lacking.
 
-### 3. Do I need to have a target list _before_ a survey? Can I construct the target list _after_ the identification of the dwc:Organism?
+### 3. Do I need to have a target list _before_ a survey? Can I construct the target list _retrospectively_ after the identification of the dwc:Organism detected?
 
-If I understand correctly, Anton does not have a *very clear* list of species before the expedition. He has some idea (up to family and life stage) of what is expected to be caught with the sampling gear. Does it make sense to put the family (e.g. [_Myctophidae_](https://www.gbif.org/species/4217)) in the `eco:targetTaxonomicScope` when the effort expanded should be targeting taxa that can occur there within the spatiotemporal scope where some of the species from the family _Myctophidae_ will not present? This seems to widen the scope of `eco:targetTaxonomicScope`.
+If I understand correctly, Anton does not have a *very clear* list of species before the expedition. He has some idea (up to family and life stage) of what is expected to be caught with the sampling gear. Hence the target list only have scientific names up to family rank. As everything caught in the survey was identified and reported, the inference of non-detection can only be made for species that belong to the target family. 
 
-The target list here was constructed _after_ the survey, based on what was caught. Everything caught was identified and reported. Hence this list is _very_ specific and allows non-detection to be inferred to species level. However, **not** everything caught is reported in this dataset. Krills are identified and reported by a different group of people in a [separate dataset](https://data.aad.gov.au/metadata/records/BROKE-West_RMT_krill). 
+However, **not** everything caught is reported in this dataset. Krills are identified and reported by a different group of people in a [separate dataset](https://data.aad.gov.au/metadata/records/BROKE-West_RMT_krill). 
+
+Constructing the target list _retrospectively_ will restrict the scope of the target. Consequently, if there are by-catch that are not reported, we cannot confidently make inference of non-detection of originally intended target taxa when the target originally have a wider scope (e.g. family) than the taxa detected (species).
+
 
 ### 4. Distinguishing by-catch-only dwc:Event and dwc:Event that sampled nothing
 
@@ -211,9 +220,12 @@ If a target taxon in `eco:targetTaxonomicScope` has `dwc:taxonRank` == genus, it
 ### 7. Difference in number of records for dwc:Occurrence when non-detection is explicit vs when it is presence-only (non-detection can be inferred)
 
 ```{r}
+# presence and inferred absence
 nrow(occ_presence_absence)  
-nrow(occ)  # there can be multiple occurrences of SAME taxon per event because the occurrenceID is needed for individual length measurement of the fish
-nrow(occ_presence_absence) - nrow(occ)
+# presence-only - there can be multiple occurrence records of SAME taxon per event because the occurrenceID is needed for individual measurements (e.g. individual length measurement of the fish)
+nrow(occ)  
+# percent number of records of presence-only compare to presence-absence
+nrow(occ)/nrow(occ_presence_absence)  * 100
 ```
 
 
