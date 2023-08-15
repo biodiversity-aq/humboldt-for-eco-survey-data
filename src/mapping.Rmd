@@ -77,7 +77,7 @@ occ_presence_only <- occ %>%
 # get Occurrences that belongs to target
 target_organisms <- occ %>% 
   select(scientificName, family) %>% 
-  filter(family %in% target$family) %>% 
+  filter(family %in% target$scientificName) %>% 
   left_join(target)
 
 # colour for labels in x-axis: target = blue, by-catch = red
