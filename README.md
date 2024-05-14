@@ -17,8 +17,8 @@ This repository contains script to infer non-detection of target taxa of a marin
 
 Knitted Rmarkdown can be rendered at:
 
-- [mapping.html](https://raw.githack.com/ymgan/humboldt-for-eco-survey-data/main/src/mapping.html)
-- [generate-humboldt-ext.html](https://raw.githack.com/ymgan/humboldt-for-eco-survey-data/main/src/generate-humboldt-ext.html)
+- [mapping.html](https://raw.githack.com/biodiversity-aq/humboldt-for-eco-survey-data/main/src/mapping.html)
+- [generate-humboldt-ext.html](https://raw.githack.com/biodiversity-aq/humboldt-for-eco-survey-data/main/src/create-humboldt-ext.html)
 
 ## Getting started
 
