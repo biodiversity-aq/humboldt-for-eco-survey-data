@@ -64,6 +64,32 @@ humboldt_ratified %>%
 
 ## Populate is__ and has__ Humboldt terms programmatically
 
+### hasMaterialSamples, materialSampleTypes
+
+```{r, materialSamples, message=FALSE, warning=FALSE}
+# Reset these columns
+humboldt_ratified <- humboldt_ratified %>%
+  mutate(hasMaterialSamples = FALSE, materialSampleTypes = "") 
+
+# Filter emof table for records with measurementType == "Energy Content Dry Weight", these are the occurrences with stomach content materialSampleTypes
+filtered_emof <- emof %>%
+  filter(measurementType == "Energy Content Dry Weight" | measurementType == "Energy Content Wet Weight")
+
+# Get the occurrenceID from the filtered emof table
+occurrenceIDs <- filtered_emof$occurrenceID
+
+# Join with occ table to get eventID and family
+joined_occ <- occ %>%
+  filter(occurrenceID %in% filtered_emof$occurrenceID) %>%
+  select(eventID, occurrenceID, family, lifeStage)
+
+head(joined_occ)
+humboldt_ratified %>% filter(targetTaxonomicScope == "Nototheniidae") %>% select(eventID, targetTaxonomicScope, targetLifeStageScope)
+```
+
+There are Occurrence records which do not have `lifeStage` information but there is `targetLifeStageScope` for these taxa, so I do not know how to assign value for `hasMaterialSamples` and `materialSampleTypes`. I am leaving these values blank. 
+
+
 ### isAbundanceReported
 
 ```{r, isAbundanceReported, message=FALSE, warning=FALSE}
