@@ -6,17 +6,19 @@ This repository contains script to infer non-detection of target taxa of a marin
 
 ```
 .
-├── README.md           
+├── README.md
 ├── humboldt.Rproj      : R project file
 ├── images              : directory to store images used in Rmd file
+├── output              : directory to store output files
 ├── renv                : renv files for dependencies
-├── renv.lock           : describe the state of project's library
-└── src
-    ├── mapping.Rmd     : Rmarkdown file of the code 
-    └── mapping.html    : HTML of knitted Rmd files 
+├── renv.lock           : describes the state of project's library
+└── src                 : directory of Rmd and knitted html files
 ```
 
-Knitted Rmarkdown can be rendered at [https://raw.githack.com/ymgan/humboldt-for-eco-survey-data/main/src/mapping.html](https://raw.githack.com/biodiversity-aq/humboldt-for-eco-survey-data/main/src/mapping.html)
+Knitted Rmarkdown can be rendered at:
+
+- [mapping.html](https://raw.githack.com/ymgan/humboldt-for-eco-survey-data/main/src/mapping.html)
+- [generate-humboldt-ext.html](https://raw.githack.com/ymgan/humboldt-for-eco-survey-data/main/src/generate-humboldt-ext.html)
 
 ## Getting started
 
