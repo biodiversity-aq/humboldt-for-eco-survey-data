@@ -1,0 +1,158 @@
+---
+title: "Create Humboldt Extension with unique target scope per row"
+author: 
+  - name: "[Yi-Ming Gan](https://orcid.org/0000-0001-7087-2646)"
+date: "`r format(Sys.Date(), '%Y-%m-%d')`"
+output:
+  html_document:
+    df_print: paged
+---
+
+## Read data
+
+The scope terms of Humboldt Extension here were populated with ` | ` pipe separated values. But they can be individual rows. The script here is to transfrom them into individual rows.
+
+```{r, read-data, message=FALSE, warning=FALSE}
+library(tidyverse)
+library(here)
+
+# Get tsv files from Google Drive 
+event <- read_tsv("https://docs.google.com/spreadsheets/d/e/2PACX-1vTzxqpYCe1tVdichPPMCVgP9fyY6duJrtgyO8zGwm7xMKL5WLb3l6MPq0Ke5TIlwU97ovdZ__ptkkMw/pub?gid=0&single=true&output=tsv", col_names = TRUE, show_col_types = FALSE)
+occ <- read_tsv("https://docs.google.com/spreadsheets/d/e/2PACX-1vTzxqpYCe1tVdichPPMCVgP9fyY6duJrtgyO8zGwm7xMKL5WLb3l6MPq0Ke5TIlwU97ovdZ__ptkkMw/pub?gid=53360819&single=true&output=tsv", col_names = TRUE, show_col_types = FALSE)
+humboldt <- read_tsv("https://docs.google.com/spreadsheets/d/e/2PACX-1vTzxqpYCe1tVdichPPMCVgP9fyY6duJrtgyO8zGwm7xMKL5WLb3l6MPq0Ke5TIlwU97ovdZ__ptkkMw/pub?gid=604710631&single=true&output=tsv", col_names = TRUE, show_col_types = FALSE)
+emof <- read_tsv("https://docs.google.com/spreadsheets/d/e/2PACX-1vTzxqpYCe1tVdichPPMCVgP9fyY6duJrtgyO8zGwm7xMKL5WLb3l6MPq0Ke5TIlwU97ovdZ__ptkkMw/pub?gid=2088877587&single=true&output=tsv", col_names = TRUE, show_col_types = FALSE)
+target <- read_tsv("https://docs.google.com/spreadsheets/d/e/2PACX-1vTzxqpYCe1tVdichPPMCVgP9fyY6duJrtgyO8zGwm7xMKL5WLb3l6MPq0Ke5TIlwU97ovdZ__ptkkMw/pub?gid=872194191&single=true&output=tsv", col_names = TRUE, show_col_types = FALSE)
+
+# show how target table looks like here
+target
+```
+
+## Create target scope for each target taxon and target life stage combination
+
+I am exploring if a humboldt table per target scope combination instead of piping the values makes sense.
+
+```{r, create-target, message=FALSE, warning=FALSE}
+record_target <- target %>% 
+  # drop these columns because they are not part of humboldt terms
+  select(-id, -scientificNameID, -taxonRank, -taxonRemarks) %>%
+  # rename the field because this will be added into the humboldt table
+  rename(targetTaxonomicScope = scientificName)
+
+humboldt_ratified <- humboldt %>%
+  # remove columns that are not needed
+  select(-eventDuration, -targetTaxonomicScope, -targetLifestageScope, -excludedLifeStageScope) %>%
+  # remove BROKE_WEST row because we do not want to join this record with target
+  filter(eventID != "BROKE_WEST") %>%
+  left_join(record_target, by = character()) %>%
+  arrange(eventID)
+
+# this step removes columns that were already excluded in humboldt_ratified table before appending the BROKE_WEST record back to the data frame
+broke_west <- humboldt %>% 
+  filter(eventID == "BROKE_WEST") %>%
+  select(-eventDuration, -targetTaxonomicScope, -targetLifestageScope, -excludedLifeStageScope)
+
+# append humboldt record eventID = BROKE_WEST back to the table
+humboldt_ratified <- humboldt_ratified %>% 
+  bind_rows(broke_west) %>%
+  arrange(eventID)
+
+# show how Humboldt table looks like for a single Event
+humboldt_ratified %>% 
+  filter(eventID == "BROKE_WEST_RMT_001") %>%
+  select(eventID, targetTaxonomicScope, targetLifeStageScope)
+```
+
+## Populate is__ and has__ Humboldt terms programmatically
+
+### isAbundanceReported
+
+```{r, isAbundanceReported, message=FALSE, warning=FALSE}
+humboldt_ratified <- humboldt_ratified %>% 
+  mutate(
+    isAbundanceReported = map2_lgl(eventID, targetTaxonomicScope, ~ {
+      occurrence <- occ %>%
+        filter(eventID == .x)
+      # all targets are at taxonRank = family level 
+      any(occurrence$family == .y &
+      # preference of "all" for all life stages over a list of possible life stages because I do not know whether the list of targetLifeStageScope is a **complete** list of life stages for the taxon
+            (.y == "all" | occurrence$lifeStage %in% targetLifeStageScope & !is.na(occurrence$individualCount)))
+    })
+  )
+```
+
+### absentTaxa
+
+Is this only for taxa from `targetTaxonomicScope`? When to use this field and when to use Occurrence record with `occurrenceStatus` = `absent`? 
+
+### isAbsenceReported
+
+Is this for `absentTaxa` or dwc:Occurrence record with `occurrenceStatus` = `absent`?
+
+### isTaxonomicScopeFullyReported
+
+`true` for all Events.
+
+### areNonTargetTaxaFullyReported 
+
+`true` for all Events.
+
+### hasNonTargetTaxa
+
+I felt that it is a little confusing when the value of this term refers to Event level but each row in the Humboldt table was populated at target level scope (with unique combination of `targetTaxonomicScope` and `targetLifeStageScope`). `hasNonTargetTaxa` has to look at all rows within the Humboldt table with the same `eventID`. The humboldt table seems to conflate target scopes and Event.
+
+```{r, hasNonTargetTaxa, message=FALSE, warning=FALSE}
+# Get unique eventIDs from occ 
+occ_eventIDs <- unique(occ$eventID)
+
+humboldt_ratified <- humboldt_ratified %>%
+  mutate(
+    hasNonTargetTaxa = map_lgl(eventID, ~{
+      if (.x %in% occ_eventIDs) {
+        occ_families <- occ %>%
+          filter(eventID == .x) %>%
+          pull(family)
+        any(!occ_families %in% targetTaxonomicScope[eventID == .x])
+      } else {
+        FALSE  # If eventID is not present in occ, return FALSE 
+      }
+    })
+  )
+
+humboldt_ratified %>% 
+  filter(hasNonTargetTaxa = TRUE) %>%
+  select(eventID, targetTaxonomicScope, targetLifeStageScope, hasNonTargetTaxa)
+```
+
+### nonTargetTaxa
+
+```{r, nonTargetTaxa, message=FALSE, warning=FALSE}
+humboldt_ratified <- humboldt_ratified %>%
+  mutate(
+    nonTargetTaxa = map_chr(eventID, ~{
+      occ_names <- occ %>%
+        filter(eventID == .x) %>%
+        # some non target taxa were identified to higher taxa (e.g. Order = Teuthida) hence is.na(family)
+        filter(!(family %in% targetTaxonomicScope[eventID == .x]) | is.na(family)) %>%
+        pull(scientificName)
+      paste(unique(occ_names), collapse = " | ")
+    })
+  )
+
+humboldt_ratified %>% 
+  filter(hasNonTargetTaxa = TRUE) %>%
+  select(eventID, targetTaxonomicScope, targetLifeStageScope, hasNonTargetTaxa, nonTargetTaxa)
+```
+
+## Write data 
+
+Write humboldt extension to file.
+
+```{r, write-data, message=FALSE, warning=FALSE}
+# Convert logical values to character strings
+humboldt_ratified <- humboldt_ratified %>%
+  mutate(across(where(is.logical), ~ifelse(.x, "true", "false")))
+
+# Write the tibble to a TSV file
+file_name <- paste0(format(Sys.Date(), "%Y-%m-%d"), "_humboldt.txt")
+write_tsv(humboldt_ratified, here("output", file_name), na = "")
+```
